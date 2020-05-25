@@ -1,0 +1,234 @@
+<html>
+	<head>
+		<title>Mandelbruh</title>
+	</head>
+	<body>
+		<div style="float:left; margin:10px">
+			<canvas id="c_grid" width="750" height="750" style="border:2px solid black; width:750px; heght:750px"></canvas>
+		</div>
+		<div style="border:2px solid black; float:left; margin:10px">
+			Iterations:
+			<br/>
+			<button onclick="changeIters(0.5)">/2</button><button onclick="changeIters(-1)">-1</button><span id="t_iters" style="margin-left:10px; margin-right:10px"></span><button onclick="changeIters(1)">+1</button><button onclick="changeIters(2)">*2</button>
+			<hr/>
+			Zoom Level:
+			<br/>
+			<p id="t_zoomLevel">Current zoom level:</p>
+			<p>Pixelation at zoom: 50000000000000x</p>
+			<button onclick="changeZoomPerClick(0.5)">/2</button><button onclick="changeZoomPerClick(-0.1)">-0.1</button><span id="t_zoomPerClick" style="margin-left:10px; margin-right:10px"></span><button onclick="changeZoomPerClick(0.1)">+0.1</button><button onclick="changeZoomPerClick(2)">*2</button>
+			<hr/>
+			Theme:
+			<br/>
+			<p id="t_theme">Current theme:</p>
+			<button onclick="setTheme('Dark')">Dark theme</button>
+			<button onclick="setTheme('Light')">Light theme</button>
+			<button onclick="setTheme('Red')">Red theme</button>
+			<br/>
+			<button onclick="setTheme('Christmas')">Christmas theme (Experimental)</button>
+			<br/>
+			<button onclick="setTheme('RGB')">RGB theme</button>
+			<button onclick="setTheme('B&W')">B&W theme</button>
+			<button onclick="setTheme('Rainbow')">Rainbow theme</button>
+		</div>
+	</body>
+</html>
+
+<script>
+	var canv = document.getElementById("c_grid");
+	var ctx = canv.getContext("2d");
+	
+	var canvWidth = 750;
+	var canvHeight = 750;
+	var canvDim = 750;
+	
+	var iters = 50;
+	document.getElementById("t_iters").innerHTML = iters + " Iterations";
+	
+	var centerX = -0.5;
+	var centerY = 0;
+	var zoomLevel = 1;
+	document.getElementById("t_zoomLevel").innerHTML = "Current zoom level: " + easyRound(zoomLevel) + "x";
+	var zoomPerClick = 2;
+	document.getElementById("t_zoomPerClick").innerHTML =  easyRound(zoomPerClick) + "x Per Click";
+	
+	var hexDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+	
+	var theme = "Rainbow";
+	document.getElementById("t_theme").innerHTML = "Current theme: " + theme;
+	
+	draw();
+	
+	var mouseX;
+	var mouseY;
+	
+	canv.addEventListener("mousedown", function(e) {
+		var rect = canv.getBoundingClientRect(); 
+		var x = event.clientX - rect.left; 
+		var y = event.clientY - rect.top;
+		canvasClicked(x, y);
+    });
+	canv.addEventListener("mousemove", function(e) {
+		var rect = canv.getBoundingClientRect(); 
+		mouseX = event.clientX - rect.left; 
+		mouseY = event.clientY - rect.top;
+    });
+	
+	function canvasClicked(x, y) {
+		centerX = gridToGraph('x', x);
+		centerY = gridToGraph('y', y);
+		zoomLevel *= zoomPerClick;
+		document.getElementById("t_zoomLevel").innerHTML = "Current zoom level: " + easyRound(zoomLevel) + "x";
+		draw();
+	}
+	
+	function draw() {
+		ctx.fillStyle = "#000000";
+		for (row = 0; row < canvHeight; row++) {
+			for (col = 0; col < canvWidth; col++) {
+				var res = analyzePoint(gridToGraph('x', col), gridToGraph('y', row));
+				if (res == -1) {
+					if (theme == "B&W") {
+						ctx.fillStyle = "#222222";
+					} else {
+						ctx.fillStyle = "#000000";
+					}
+				} else {
+					var lay = 0;
+					if (theme == "Dark" || theme == "Red") {
+						hexVal = RGBtoHex(Math.floor((res / iters) * 255));
+					} else if (theme == "Light") {
+						hexVal = RGBtoHex(Math.floor((1 - (res / iters)) * 255));
+					} else if (theme == "Christmas") {
+						var curr = 10;
+						lay = 0;
+						while (res > curr) {
+							lay += 1;
+							curr *= 2;
+						}
+						curr /= 2;
+						hexVal = RGBtoHex(Math.floor(((res - curr) / (curr / 2)) * 255));
+					} else if (theme == "RGB") {
+						hexVal = "FF";
+					} else if (theme == "B&W") {
+						if (res % 2 == 0) {
+							hexVal = "00";
+						} else if (res % 2 == 1) {
+							hexVal = "FF";
+						}
+					}
+					if (theme == "Red") {
+						ctx.fillStyle = "#" + hexVal + "0000";
+					} else if (theme == "Christmas") {
+						if (lay % 2 == 0) {
+							ctx.fillStyle = "#" + hexVal + "0000";
+						} else if (lay % 2 == 1) {
+							ctx.fillStyle = "#00" + hexVal + "00";
+						}
+					} else if (theme == "RGB") {
+						if (res % 3 == 0) {
+							ctx.fillStyle = "#" + hexVal + "0000";
+						} else if (res % 3 == 1) {
+							ctx.fillStyle = "#00" + hexVal + "00";
+						} else if (res % 3 == 2) {
+							ctx.fillStyle = "#0000" + hexVal;
+						}
+					} else if (theme == "Rainbow") {
+						if (res % 8 == 0) {
+							ctx.fillStyle = "#f50f0f";
+						} else if (res % 8 == 1) {
+							ctx.fillStyle = "#f5630f";
+						} else if (res % 8 == 2) {
+							ctx.fillStyle = "#f5ea0f";
+						} else if (res % 8 == 3) {
+							ctx.fillStyle = "#13f50f";
+						} else if (res % 8 == 4) {
+							ctx.fillStyle = "#0ff59d";
+						} else if (res % 8 == 5) {
+							ctx.fillStyle = "#0f39f5";
+						} else if (res % 8 == 6) {
+							ctx.fillStyle = "#7a0ff5";
+						} else if (res % 8 == 7) {
+							ctx.fillStyle = "#f50fbf";
+						}
+					} else {
+						ctx.fillStyle = "#" + hexVal + hexVal + hexVal;
+					}
+				}
+				ctx.beginPath;
+				ctx.fillRect(col, row, 1, 1);
+				ctx.fill();
+			}
+		}
+	}
+	
+	function gridToGraph(axis, gridVal) {
+		var graphVal;
+		if (axis == 'x') {
+			graphVal = (gridVal - (canvDim / 2)) / (canvDim / 4 * zoomLevel);
+			graphVal += centerX;
+		} else if (axis == 'y') {
+			graphVal = (gridVal - (canvDim / 2)) / (canvDim / 4 * zoomLevel);
+			graphVal += centerY;
+		}
+		return(graphVal);
+	}
+	
+	function analyzePoint(graphX, graphY) {
+		var realVal = graphX;
+		var imagVal = graphY;
+		var newReal;
+		var newImag;
+		for (i = 0; i < iters; i++) {
+			newReal = Math.pow(realVal, 2) - Math.pow(imagVal, 2) + graphX;
+			newImag = (2 * realVal * imagVal) + graphY;
+			realVal = newReal;
+			imagVal = newImag;
+			if (Math.pow(realVal, 2) + Math.pow(imagVal, 2) >= 4) {
+				return(i);
+			}
+		}
+		if (Math.pow(realVal, 2) + Math.pow(imagVal, 2) < 4) {
+			return(-1);
+		}
+	}
+	
+	function changeIters(num) {
+		if (num == -1 || num == 1) {
+			iters += num;
+		} else if (num == 0.5 || num == 2) {
+			iters = Math.floor(iters * num);
+		}
+		document.getElementById("t_iters").innerHTML = iters + " Iterations";
+		draw();
+	}
+	
+	function changeZoomPerClick(num) {
+		if (num == -0.1 || num == 0.1) {
+			zoomPerClick += num;
+		} else if (num == 0.5 || num == 2) {
+			zoomPerClick = zoomPerClick * num;
+		}
+		document.getElementById("t_zoomPerClick").innerHTML =  easyRound(zoomPerClick) + "x Per Click";
+	}
+	
+	function setTheme(which) {
+		var newTheme = which;
+		if (newTheme != theme) {
+			theme = newTheme;
+			draw();
+			document.getElementById("t_theme").innerHTML = "Current theme: " + theme;
+		}
+	}
+
+	function RGBtoHex(RGBval) {
+		var firstDigit = Math.floor(RGBval / 16);
+		var secondDigit = RGBval % 16;
+		var firstLet = hexDigits[firstDigit];
+		var secondLet = hexDigits[secondDigit];
+		return(firstLet + secondLet);
+	}
+	
+	function easyRound(num) {
+		return(Math.round(num * 100) / 100);
+	}
+</script>
